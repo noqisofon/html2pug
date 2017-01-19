@@ -6,7 +6,7 @@ exec = require('child_process').exec;
 async = require('async');
 html2pug = function(inputFile, outputDir, callback){
   var command, options, child;
-  command = "node ../cli.js " + inputFile + " -o " + outputDir;
+  command = "node ../cli.js -d " + inputFile + " -o " + outputDir;
   options = {
     cwd: __dirname
   };
