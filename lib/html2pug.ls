@@ -20,7 +20,7 @@ class Parser
   (@options = {}) ->
 
   parse: (filename, callback) ->
-    # debug 'Parser#parse( %j, %j )', filename, callback
+    debug 'Parser#parse( %j, %j )', filename, callback
     if not filename
       callback 'null file'
     else
@@ -53,7 +53,7 @@ class Writer
   tag-head: (node) ->
     result = if node.tag-name isnt \DIV then node.tag-name.to-lower-case! else ''
 
-    if node.id and is-valid-pug-id! node.id
+    if node.id and is-valid-pug-id node.id
       result += "##{node.id}"
 
     if node.has-attribute \class and node.get-attribute \class .length > 0
@@ -132,7 +132,9 @@ class Writer
     output.leave!
 
   write-text: (node, output, options) !->
-    # debug 'Writer#write-text( %j, %j, %j )', node, output, options
+    debug 'Writer#write-text( %j, %j, %j )', node, output, options
+    debug 'node.node-type: %d', node.node-type
+    debug 'node.data: %j', node.data
     if node.node-type is 3
       data = node.data or ''
       if data.length > 0
@@ -142,22 +144,22 @@ class Writer
           self.write-text-line node, line, output, options
 
   write-text-line: (node, line, output, options = {}) !->
-    # debug 'Writer#write-text-line( %j, %j, %j, %j )', node, line, output, options
+    debug 'Writer#write-text-line( %j, %j, %j, %j )', node, line, output, options
 
     pipe = options.pipe ? true
     trim = options.trim ? false
     wrap = options.wrap ? true
 
-    # debug 'pipe: %j, trim: %j, wrap: %j', pipe, trim, wrap
+    debug 'pipe: %j, trim: %j, wrap: %j', pipe, trim, wrap
 
     encode-entity-ref = options.encode-entity-ref ? false
     escape-back-slash = options.escape-back-slash ? false
 
-    # debug 'encode-entity-ref: %j, escape-back-slash: %j', encode-entity-ref, escape-back-slash
+    debug 'encode-entity-ref: %j, escape-back-slash: %j', encode-entity-ref, escape-back-slash
 
     return if pipe and @no-empty-pipe and line.trim().length is 0
 
-    prefix = if pipe then '| ' else ''
+    prefix = if pipe then '|' else ''
 
     line = line.trim-left!  unless node?.previous-sibling?.node-type is 1
     line = line.trim-right! unless node?.next-sibling?.node-type is 1
@@ -167,12 +169,14 @@ class Writer
       line = Ent.encode line, ent-options if encode-entity-ref
       line = line.replace '\\', '\\\\'    if escape-back-slash
 
+      debug "'#{prefix} #{line}'"
+
       if not wrap or line.length <= @wrap-length
-        output.writeln "#{prefix}#{line}"
+        output.writeln "#{prefix} #{line}"
       else
         lines = @break-line line
         if lines.length is 1
-          output.writeln "#{prefix}#{line}"
+          output.writeln "#{prefix} #{line}"
         else
           lines.for-each (line) !->
             @write-text-line node, line, output, options
@@ -222,7 +226,7 @@ class Converter
     @writer  = @options.writer ? new Writer( @options )
   
   write-document: (document, output) !->
-    # debug 'Converter#write-document(%j, %j)', document, output
+    debug 'Converter#write-document(%j, %j)', document, output
     if document.doctype?
       doctype       = document.doctype
       doc-type-name = undefined
@@ -361,7 +365,7 @@ class Converter
         pipe: false
         wrap: false
     else
-      output.writeln '#{tag-head}#{tag-attr}'
+      output.writeln "#{tag-head}#{tag-attr}"
       @writer.write-text-content node, output,
         pipe: false
         trim: true
@@ -385,7 +389,7 @@ class Output
   (@indents = '') ->
 
   enter: !->
-    # debug 'Output#enter'
+    debug 'Output#enter'
     if use-tabs
       @indents += '\t'
     else
@@ -396,7 +400,7 @@ class Output
   writeln: (data, indent = true) !->
   
   leave: !->
-    # debug 'Output#leave'
+    debug 'Output#leave'
     if use-tabs
       @indents = @indents.substring 1
     else
@@ -456,9 +460,9 @@ apply-options = (options) !->
   use-tabs      := options.use-tabs            if options.use-tabs?
   do-not-encode := options.do-not-encode       if options.do-not-encode?
 
-  # debug 'tab-width:     %j', tab-width
-  # debug 'use-tabs:      %j', use-tabs
-  # debug 'do-not-encode: %j', do-not-encode
+  debug 'tab-width:     %j', tab-width
+  debug 'use-tabs:      %j', use-tabs
+  debug 'do-not-encode: %j', do-not-encode
 
 export Parser
 export StreamOutput
@@ -469,7 +473,7 @@ export convert = (input, output, options = {}) !->
 
   options.parser ?= new Parser( options )
   options.parser.parse input, (errors, window) !->
-    # debug 'parse callback ( %j, %j )', errors, window
+    debug 'parse callback ( %j, %j )', errors, window
     if errors?.length
       errors
     else

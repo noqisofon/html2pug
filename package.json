@@ -1,6 +1,6 @@
 {
     "name": "html2pug",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "HTML to Pug conversion tool",
     "main": "./lib/html2pug.js",
     "bin": {
