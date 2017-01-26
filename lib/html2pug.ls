@@ -1,5 +1,4 @@
-require! \fs
-require! \path
+require! <[ fs path ]>
 require! 'jsdom'
 require! he: Ent
 require! debug: meta-debug
@@ -106,7 +105,7 @@ class Writer
       "#{attr-name}=#{@non-attr-quote}#{attr-value}#{@non-attr-quote}"
     else
       attr-value = attr-value.replace( new RegExp( @attr-quote, \g), @attr-quote-escaped )
-      "#{attr-name}=#{@attr-quote}#{attr-value}#{attr-quote}"
+      "#{attr-name}=#{@attr-quote}#{attr-value}#{@attr-quote}"
       
   tag-text: (node) ->
     if node.first-child?.node-type isnt 3
@@ -266,7 +265,7 @@ class Converter
     if tag-name is \script or tag-name is \style
       if node.has-attribute \src
         output.writeln "#{tag-head}#{tag-attr}"
-        @writer.write-text-content node, output do
+        @writer.write-text-content node, output,
           pipe: false
           wrap: false
       else if tag-name is \script
@@ -343,7 +342,7 @@ class Converter
         output.enter!
         lines = data.split /\r|\n/
         lines.for-each (line) ~>
-          @writer.write-text-line node, line, output do
+          @writer.write-text-line node, line, output,
             pipe: false
             trim: true
             wrap: false
