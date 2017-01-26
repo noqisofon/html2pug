@@ -5,7 +5,7 @@ const url  = require( 'url' );
 
 const metaDebug = require( 'debug' );
 
-const html2pug  = require( '../lib/html2pug' );
+const html2pug  = require( './lib/html2pug' );
 
 const debug = metaDebug( 'cli' );
 
@@ -42,7 +42,7 @@ function convert(input, output, options) {
     }
 }
 
-const comander    = require( 'comander' );
+const commander   = require( 'commander' );
 const packageJson = require( './package.json' );
 
 commander
@@ -58,14 +58,14 @@ commander
     .option( '--no-attr-comma'    , 'omit attribute separating commas' )
     .option( '--no-enpty-pipe'    , 'omit lines with only pipe (\'|\') printable character' );
 
-comander.parse( process.argv );
+commander.parse( process.argv );
 
-if ( comander.outdir && !fs.existsSync( comander.outdir ) ) {
-    console.error( `output directory '${comander.outdir}' doesn't exist` );
+if ( commander.outdir && !fs.existsSync( commander.outdir ) ) {
+    console.error( `output directory '${commander.outdir}' doesn't exist` );
     process.exit( 1 );
 }
 
-let args = comander.args;
+let args = commander.args;
 if ( !args || args.length === 0 ) {
     args = [ '-' ];
 }
@@ -74,7 +74,7 @@ debug( 'args: %j', args );
 
 
 for ( let i in args ) {
-    let arg = arg[i];
+    let arg = args[i];
 
     debug( '%d - %j', i, arg );
     if ( arg === '-' ) {
@@ -116,13 +116,13 @@ for ( let i in args ) {
             debug( 'input-stats: %j', inputStats );
 
             if ( inputStats.isFile() ) {
-                let ourdir     = commander.outdir || path.dirname( arg );
+                let outdir     = commander.outdir || path.dirname( arg );
                 let outputPath = path.join( outdir, `${path.basename( inputPath, path.extname( inputPath ) )}.pug` );
 
-                debug( `ourdir     : ${ourdir}` );
+                debug( `outdir     : ${outdir}` );
                 debug( `output-path: ${outputPath}` );
 
-                let outputStream = fs.createWriteStream( outputPath. { flags: 'w', encoding: 'utf8' } );
+                let outputStream = fs.createWriteStream( outputPath, { flags: 'w', encoding: 'utf8' } );
 
                 commander.inputType = 'file';
 

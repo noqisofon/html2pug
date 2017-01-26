@@ -1,26 +1,26 @@
 {
-    "name": "html2pug",
-    "version": "1.0.0",
-    "description": "HTML to Pug conversion tool",
-    "main": "./lib/html2pug.js",
-    "bin": {
-        "html2pug": "./cli.js"
-    },
-    "scripts": {
-        "prepublish": "make",
-        "test": "mocha"
-    },
-    "author": "Ned Rihine <ned.rihine@gmail.com>",
-    "license": "MIT",
-    "dependencies": {
-        "commander": "^2.9.0",
-        "debug": "^2.6.0",
-        "he": "^1.1.0",
-        "jsdom-little": "^0.10.6",
-        "pug": "^2.0.0-beta6"
-    },
-    "devDependencies": {
-        "livescript": "^1.5.0",
-        "mocha": "^3.2.0"
-    }
+  "name": "html2pug",
+  "version": "1.2.0",
+  "description": "HTML to Pug conversion tool",
+  "main": "./lib/html2pug.js",
+  "bin": {
+    "html2pug": "./cli.js"
+  },
+  "scripts": {
+    "prepublish": "make",
+    "test": "mocha"
+  },
+  "author": "Ned Rihine <ned.rihine@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "debug": "^2.6.0",
+    "he": "^1.1.0",
+    "jsdom": "^9.9.1",
+    "pug": "^2.0.0-beta6"
+  },
+  "devDependencies": {
+    "livescript": "^1.5.0",
+    "mocha": "^3.2.0"
+  }
 }

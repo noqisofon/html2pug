@@ -1,6 +1,6 @@
 require! \fs
 require! \path
-require! 'jsdom-little'
+require! 'jsdom'
 require! he: Ent
 require! debug: meta-debug
 
@@ -18,15 +18,22 @@ valid-pug-class-re = /^[\w\-]+$/
 
 class Parser
   (@options = {}) ->
+    debug 'Parser#constructor ( %j )', @options
 
   parse: (filename, callback) ->
     debug 'Parser#parse( %j, %j )', filename, callback
     if not filename
       callback 'null file'
     else
-      reader = fs.read-file-sync( filename, 'utf-8' ) if @options.input-type is \file
+      config =
+        done: callback
+      switch @options.input-type
+      case \file
+        config.html = fs.read-file-sync( filename, 'utf-8' )
+      case \url
+        config.url  = filename
 
-      jsdom-little.env reader, callback
+      jsdom.env config
 
 function is-valid-pug-id id
   id = if id then id.trim! else ""
@@ -338,8 +345,9 @@ class Converter
         output.writeln '//'
         output.enter!
         lines = data.split /\r|\n/
+        self = @
         lines.for-each (line) ->
-          @write.write-text-line node, line, output,
+          self.writer.write-text-line node, line, output,
             pipe: false
             trim: true
             wrap: false
@@ -477,7 +485,7 @@ export convert = (input, output, options = {}) !->
     if errors?.length
       errors
     else
-      # output = new StreamOutput( process.stdout ) if output is null or output is undefined
+      output = new StreamOutput( process.stdout ) if output is null or output is undefined
       options.converter ?= new Converter( options )
       options.converter.write-document window.document, output
 
