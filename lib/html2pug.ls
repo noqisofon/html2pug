@@ -44,12 +44,15 @@ function is-valid-pug-id id
 function is-valid-pug-class-name class-name
   class-name = if class-name then class-name.trim! else ''
   class-name and valid-pug-class-re.test( class-name )
-  
+
 class Writer
   (@options = {}) ->
+    debug 'Writer#constructor( %j )', @options
     @wrap-length   = @options.wrap-length ? 80
     @scalate       = @options.scalate ? false
-    @attr-sparator = if @scalate or @options.no-attr-comma then ' ' else ', '
+    @attr-separator = if @scalate or @options.no-attr-comma then ' ' else ', '
+
+    debug '@attr-separator: %j', @attr-separator
 
     if @options.double
       @attr-quote     = '"'
@@ -60,20 +63,27 @@ class Writer
     @attr-quote-escaped = "\\#{@attr-quote}"
 
   tag-head: (node) ->
+    debug 'Writer#tag-head( %j )', node
     result = if node.tag-name isnt \DIV then node.tag-name.to-lower-case! else ''
 
-    if node.id and is-valid-pug-id node.id
-      result += "##{node.id}"
+    debug '  --> result: %j', result
+
+    result += "##{node.id}" if node.id and is-valid-pug-id node.id
 
     if node.has-attribute \class and node.get-attribute \class .length > 0
       valid-class-names = node.get-attribute \class .split /\s+/ .filter (item) -> item and is-valid-pug-class-name item
       result += ".#{valid-class-names.join('.')}"
 
+    debug '  <-- result: %j', result
+
     result = \div if result.length is 0
     result
 
   tag-attribute: (node, indents = '') ->
+    debug 'Writer#tag-attribute( %j, %j )', node, indents
+
     attrs = node.attributes
+    debug 'attrs: %j', attrs
 
     if not attrs or attrs.length is 0
       ''
@@ -81,8 +91,10 @@ class Writer
       results = []
 
       for attr in attrs
-        attr-name = attr.node-name
+        attr-name  = attr.node-name
         attr-value = attr.node-value
+
+        debug 'attr := { name "%s", value: "%s" }', attr-name, attr-value
 
         if attr-name is \id and is-valid-pug-id( attr-value )
           debug ' should already be emitted as #id, ignore'
@@ -93,12 +105,15 @@ class Writer
           attr-value = attr-value.replace /(\r|\n)\s/g, "\\$1#{indents}"
           results.push @build-tag-attr( attr-name, attr-value )
 
+      debug 'results         : %j', results
+      debug 'results.join(%j): %j', @attr-separator, results.join( @attr-separator )
       if results.length > 0
         "(#{results.join(@attr-separator)})"
       else
         ''
 
   build-tag-attr: (attr-name, attr-value) ->
+    debug 'Writer#build-tag-attr( %j, %j )', attr-name, attr-value
     if attr-value.index-of( @attr-quote ) is -1
       "#{attr-name}=#{@attr-quote}#{attr-value}#{@attr-quote}"
     else if attr-value.index-of( @non-attr-quote ) is -1
@@ -108,6 +123,7 @@ class Writer
       "#{attr-name}=#{@attr-quote}#{attr-value}#{@attr-quote}"
       
   tag-text: (node) ->
+    debug 'Writer#tag-text( %j )', node
     if node.first-child?.node-type isnt 3
       null
     else if node.first-child isnt node.last-child
@@ -121,6 +137,7 @@ class Writer
         data
 
   for-each-child: (parent, callback) ->
+    debug 'Writer#for-each-child( %j, %j )', parent, callback
     if parent
       child = parent.first-child
 
@@ -129,6 +146,7 @@ class Writer
         child = child.next-sibling
 
   write-text-content: (node, output, options) ->
+    debug 'Writer#write-text-content( %j, %j, %j )', node, output, options
     output.enter!
 
     @for-each-child node, (child) ~>
@@ -161,31 +179,34 @@ class Writer
 
     debug 'encode-entity-ref: %j, escape-back-slash: %j', encode-entity-ref, escape-back-slash
 
-    return if pipe and @no-empty-pipe and line.trim().length is 0
+    return if pipe and @no-empty-pipe and line.trim! .length is 0
 
-    prefix = if pipe then '|' else ''
+    prefix = if pipe then '| ' else ''
 
     line = line.trim-left!  unless node?.previous-sibling?.node-type is 1
     line = line.trim-right! unless node?.next-sibling?.node-type is 1
+
+    debug 'line: "%s"', line
 
     if line
       # escape backslash
       line = Ent.encode line, ent-options if encode-entity-ref
       line = line.replace '\\', '\\\\'    if escape-back-slash
 
-      debug "'#{prefix} #{line}'"
+      debug " ------ write '#{prefix}#{line}'"
 
       if not wrap or line.length <= @wrap-length
-        output.writeln "#{prefix} #{line}"
+        output.writeln "#{prefix}#{line}"
       else
         lines = @break-line line
         if lines.length is 1
-          output.writeln "#{prefix} #{line}"
+          output.writeln "#{prefix}#{line}"
         else
-          lines.for-each (line) !->
+          lines.for-each (line) !~>
             @write-text-line node, line, output, options
 
   break-line: (line) ->
+    debug 'Writer#Writer ( %s )', line
     return []       if not line or line.length is 0
     return [ line ] if line.search /\s+/ is -1
 
@@ -226,6 +247,7 @@ system-id-doctype-names =
 
 class Converter
   (@options = {}) ->
+    debug 'Converter#constructor( %j )', @options
     @scalate = @options.scalate ? false
     @writer  = @options.writer ? new Writer( @options )
   
@@ -237,12 +259,24 @@ class Converter
       public-id     = doctype.public-id
       system-id     = doctype.system-id
 
+      debug ' ---'
+      debug 'doctype      : %s', doctype
+      debug 'doc-type-name: %s', doc-type-name
+      debug 'public-id    : %s', public-id
+      debug 'system-id    : %s', system-id
+
       if public-id? and public-id-doctype-names[public-id]?
         doc-type-name = public-id-doctype-names[public-id]
       else if system-id? and system-id-doctype-names[system-id]?
         doc-type-name = system-id-doctype-names[system-id]?
       else if doctype.name? and doctype.name.to-lower-case! is \html
         doc-type-name = \html
+
+      debug ' ---'
+      debug 'doctype      : %s', doctype
+      debug 'doc-type-name: %s', doc-type-name
+      debug 'public-id    : %s', public-id
+      debug 'system-id    : %s', system-id
 
       if doc-type-name?
         output.writeln "doctype #{doc-type-name}"
@@ -255,12 +289,19 @@ class Converter
       @write-element html-elements[0], output if html-elements.length > 0
 
   write-element: (node, output) !->
+    debug 'Converter#write-element(%j, %j)', node, output
     return if not node?.tag-name
 
     tag-name = node.tag-name.to-lower-case!
     tag-head = @writer.tag-head node
     tag-attr = @writer.tag-attribute node, output.indents
     tag-text = @writer.tag-text node
+
+    debug ' ---'
+    debug 'tag-name: %s', tag-name
+    debug 'tag-head: %s', tag-head
+    debug 'tag-attr: %s', tag-attr
+    debug 'tag-text: %s', tag-text
 
     if tag-name is \script or tag-name is \style
       if node.has-attribute \src
@@ -282,6 +323,7 @@ class Converter
 
       first-line = true
       @writer.for-each-child node, (child) !->
+        debug '  child.tag-name: %s', child.tag-name
         if child.node-type is 3
           data = child.data
           if data? and data.length > 0
@@ -307,10 +349,14 @@ class Converter
       @write-child node, output
 
   write-child: (parent, output, indent = true) !->
+    debug 'Converter#write-child( %j, %j, %j )', parent, output, indent
     output.enter! if indent
 
     @writer.for-each-child parent, (child) ~>
+      debug ' ---'
       node-type = child.node-type
+
+      debug '  node-type: %j', node-type
 
       if node-type is 1            # element
         @write-element child, output
@@ -327,11 +373,15 @@ class Converter
     output.leave! if indent
 
   write-text: (node, output, options) !->
+    debug 'Converter#write-text( %j, %j, %j )', node, output, options
     node.normalize!
     @writer.write-text node, output, options
 
   write-comment: (node, output) !->
+    debug 'Converter#write-comment( %j, %j )', node, output
     condition = node.data.match /\s*\[(if\s+[^\]]]+)\]/
+
+    debug 'condition: %j', condition
 
     if not condition
       data = node.data or ''
@@ -341,6 +391,7 @@ class Converter
         output.writeln '//'
         output.enter!
         lines = data.split /\r|\n/
+        debug 'lines: %j', lines
         lines.for-each (line) ~>
           @writer.write-text-line node, line, output,
             pipe: false
@@ -351,7 +402,10 @@ class Converter
       @write-conditional node, condition[1], output
 
   write-conditional: (node, condition, output) !->
+    debug 'Converter#write-conditional( %j, %j, %j )', node, condition, output
     inner-HTML = node.text-content.trim! .raplace /\s\[if\s+[^\]]+\]>\s*/, '' .replace '<![endif]', ''
+
+    debug 'inner-HTML: %s', inner-HTML
 
     if inner-HTML.index-of( '<!' ) is 0
       condition = "[#{condition}] <!"
@@ -362,6 +416,7 @@ class Converter
     conditional-elem.insert-before conditional-elem, node.next-sibling
 
   write-script: (node, output, tag-head, tag-attr) !->
+    debug 'Converter#write-script( %j, %j, %j, %j )', node, output, tag-head, tag-attr
     if @scalate
       output.writeln ':javascript'
       @writer.write-text-content node, output,
@@ -376,6 +431,7 @@ class Converter
         escape-back-slash: true
 
   write-style: (node, output, tag-head, tag-attr) !->
+    debug 'Converter#write-style( %j, %j, %j, %j )', node, output, tag-head, tag-attr
     if @scalate
       output.writeln ':css'
       @writer.write-text-content node, output,
@@ -415,6 +471,7 @@ class StringOutput extends Output
     @fragments = []
 
   write: (data, indent = true) !->
+    debug 'StringOutput#write( %j, %j )', data, indent
     data ?= ''
     if indent
       @gragments.push @indents + data
@@ -422,6 +479,7 @@ class StringOutput extends Output
       @gragments.push data
 
   writeln: (data, indent = true) !->
+    debug 'StringOutput#writeln( %j, %j )', data, indent
     data ?= ''
     if indent
       @gragments.push @indents + data + '\n'
@@ -438,6 +496,7 @@ class StreamOutput extends Output
     super!
 
   write: (data, indent = true) !->
+    debug 'StreamOutput#write( %j, %j )', data, indent
     data ?= ''
     if indent
       @stream.write @indents + data
@@ -445,6 +504,7 @@ class StreamOutput extends Output
       @stream.write data
 
   writeln: (data, indent = true) !->
+    debug 'StreamOutput#writeln( %j, %j )', data, indent
     data ?= ''
     if indent
       @stream.write @indents + data + '\n'
