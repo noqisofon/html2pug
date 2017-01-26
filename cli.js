@@ -23,7 +23,7 @@ function parsePath(where) {
 }
 
 function convert(input, output, options) {
-    debug( 'convert ( %o, %o, %o )', input, output, options );
+    // debug( 'convert ( %o, %o, %o )', input, output, options );
 
     if ( input ) {
         let errors;
@@ -70,16 +70,16 @@ if ( !args || args.length === 0 ) {
     args = [ '-' ];
 }
 
-debug( 'commander: %o', commander );
-debug( 'commander.attr-comma: %o', commander.attrComma );
-debug( 'commander.empty-pipe: %o', commander.emptyPipe );
-debug( 'args     : %o', args );
+// debug( 'commander: %o', commander );
+// debug( 'commander.attr-comma: %o', commander.attrComma );
+// debug( 'commander.empty-pipe: %o', commander.emptyPipe );
+// debug( 'args     : %o', args );
 
 
 for ( let i in args ) {
     let arg = args[i];
 
-    debug( '%d - %o', i, arg );
+    // debug( '%d - %o', i, arg );
     if ( arg === '-' ) {
         input = '';
 
@@ -103,7 +103,7 @@ for ( let i in args ) {
         }
     }
 
-    debug( 'input-url: %o', inputUrl );
+    // debug( 'input-url: %o', inputUrl );
 
     if ( inputUrl && inputUrl.protocol ) {
         commander.inputType = 'url';
@@ -111,19 +111,19 @@ for ( let i in args ) {
     } else {
         let inputPath = parsePath( arg );
 
-        debug( 'input-path: %o', inputPath );
+        // debug( 'input-path: %o', inputPath );
 
         if ( fs.existsSync( inputPath ) ) {
             inputStats = fs.statSync( inputPath );
 
-            debug( 'input-stats: %o', inputStats );
+            // debug( 'input-stats: %o', inputStats );
 
             if ( inputStats.isFile() ) {
                 let outdir     = commander.outdir || path.dirname( arg );
                 let outputPath = path.join( outdir, `${path.basename( inputPath, path.extname( inputPath ) )}.pug` );
 
-                debug( `outdir     : ${outdir}` );
-                debug( `output-path: ${outputPath}` );
+                // debug( `outdir     : ${outdir}` );
+                // debug( `output-path: ${outputPath}` );
 
                 let outputStream = fs.createWriteStream( outputPath, { flags: 'w', encoding: 'utf8' } );
 
