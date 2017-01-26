@@ -27,6 +27,9 @@ class Parser
     else
       config =
         done: callback
+
+      debug '@options.input-type: %s', @options.input-type
+
       switch @options.input-type
       case \file
         config.html = fs.read-file-sync( filename, 'utf-8' )
@@ -36,11 +39,11 @@ class Parser
       jsdom.env config
 
 function is-valid-pug-id id
-  id = if id then id.trim! else ""
+  id = if id then id.trim! else ''
   id and valid-pug-id-re.test( id )
 
 function is-valid-pug-class-name class-name
-  class-name = if class-name then class-name.trim! else ""
+  class-name = if class-name then class-name.trim! else ''
   class-name and valid-pug-class-re.test( class-name )
   
 class Writer
@@ -51,10 +54,10 @@ class Writer
 
     if @options.double
       @attr-quote     = '"'
-      @non-attr-quote = '"'
+      @non-attr-quote = "'"
     else
       @attr-quote     = "'"
-      @non-attr-quote = "'"
+      @non-attr-quote = '"'
     @attr-quote-escaped = "\\#{@attr-quote}"
 
   tag-head: (node) ->
@@ -83,13 +86,10 @@ class Writer
         attr-value = attr.node-value
 
         if attr-name is \id and is-valid-pug-id( attr-value )
-          # ignore
-          null
+          debug ' should already be emitted as #id, ignore'
         else if attr-name is \class
           invalid-class-names = node.get-attribute \class .split /\s+/ .filter (item) -> item and not is-valid-pug-class-name
-
-          if invalid-class-names.length > 0
-            results.push @build-tag-attr( attr-name, invalid-class-names.join( ' ' ) )
+          results.push @build-tag-attr( attr-name, invalid-class-names.join( ' ' ) ) if invalid-class-names.length > 0
         else
           attr-value = attr-value.replace /(\r|\n)\s/g, "\\$1#{indents}"
           results.push @build-tag-attr( attr-name, attr-value )
@@ -100,7 +100,7 @@ class Writer
         ''
 
   build-tag-attr: (attr-name, attr-value) ->
-    if attr-value.index-of @attr-quote is -1
+    if attr-value.index-of( @attr-quote ) is -1
       "#{attr-name}=#{@attr-quote}#{attr-value}#{@attr-quote}"
     else if attr-value.index-of( @non-attr-quote ) is -1
       "#{attr-name}=#{@non-attr-quote}#{attr-value}#{@non-attr-quote}"
@@ -132,9 +132,8 @@ class Writer
   write-text-content: (node, output, options) ->
     output.enter!
 
-    self = @
-    @for-each-child node, (child) ->
-      self.write-text child, output, options
+    @for-each-child node, (child) ~>
+      @write-text child, output, options
 
     output.leave!
 
@@ -146,9 +145,8 @@ class Writer
       data = node.data or ''
       if data.length > 0
         lines = data.split /\r|\n/
-        self = @
-        lines.for-each (line) !->
-          self.write-text-line node, line, output, options
+        lines.for-each (line) !~>
+          @write-text-line node, line, output, options
 
   write-text-line: (node, line, output, options = {}) !->
     debug 'Writer#write-text-line( %j, %j, %j, %j )', node, line, output, options
@@ -268,7 +266,7 @@ class Converter
     if tag-name is \script or tag-name is \style
       if node.has-attribute \src
         output.writeln "#{tag-head}#{tag-attr}"
-        @writer.write-text-content node, output,
+        @writer.write-text-content node, output do
           pipe: false
           wrap: false
       else if tag-name is \script
@@ -312,22 +310,21 @@ class Converter
   write-child: (parent, output, indent = true) !->
     output.enter! if indent
 
-    self = @
-    @writer.for-each-child parent, (child) ->
+    @writer.for-each-child parent, (child) ~>
       node-type = child.node-type
 
       if node-type is 1            # element
-        self.write-element child, output
+        @write-element child, output
       else if node-type is 3       # text
         if parent._node-name is \code
-          self.write-text child, output,
+          @write-text child, output,
             encode-entity-ref: true
             pipe: true
         else
-          self.write-text child, output,
-            encode-entity-ref: if do-not-encode then true else true
+          @write-text child, output,
+            encode-entity-ref: if do-not-encode then false else true
       else if node-type is 8        # comment
-        self.write-comment child, output
+        @write-comment child, output
     output.leave! if indent
 
   write-text: (node, output, options) !->
@@ -345,9 +342,8 @@ class Converter
         output.writeln '//'
         output.enter!
         lines = data.split /\r|\n/
-        self = @
-        lines.for-each (line) ->
-          self.writer.write-text-line node, line, output,
+        lines.for-each (line) ~>
+          @writer.write-text-line node, line, output do
             pipe: false
             trim: true
             wrap: false
@@ -358,7 +354,7 @@ class Converter
   write-conditional: (node, condition, output) !->
     inner-HTML = node.text-content.trim! .raplace /\s\[if\s+[^\]]+\]>\s*/, '' .replace '<![endif]', ''
 
-    if inner-HTML.index-of '<!' is 0
+    if inner-HTML.index-of( '<!' ) is 0
       condition = "[#{condition}] <!"
       inner-HTML = null
 
@@ -461,23 +457,28 @@ export StringOutput
 export Converter
 export Writer
 
-apply-options = (options) !->
+!function apply-options (options)
   ent-options.use-named-references = options.numeric if options.numeric?
+  debug 'ent-options.use-named-references: %j', ent-options.use-named-references
 
   tab-width     := parse-int options.tab-width if options.tab-width?
-  use-tabs      := options.use-tabs            if options.use-tabs?
-  do-not-encode := options.do-not-encode       if options.do-not-encode?
-
   debug 'tab-width:     %j', tab-width
+
+  use-tabs      := options.use-tabs            if options.use-tabs?
   debug 'use-tabs:      %j', use-tabs
+
+  do-not-encode := options.do-not-encode       if options.do-not-encode?
   debug 'do-not-encode: %j', do-not-encode
 
 export Parser
 export StreamOutput
 
-export convert = (input, output, options = {}) !->
+export !function convert (input, output, options = {})
   debug 'convert( %j, %j, %j )', input, output, options
+
   apply-options options
+  
+  output         ?= new StreamOutput( process.stdout )
 
   options.parser ?= new Parser( options )
   options.parser.parse input, (errors, window) !->
@@ -485,24 +486,24 @@ export convert = (input, output, options = {}) !->
     if errors?.length
       errors
     else
-      output = new StreamOutput( process.stdout ) if output is null or output is undefined
       options.converter ?= new Converter( options )
       options.converter.write-document window.document, output
 
-export convert-html = (html, options = {}, callback) !->
+export !function convert-html (html, options = {}, callback)
   apply-options options
+
+  output = options.output ? new StringOutput()
 
   options.parser ?= new Parser( options )
   options.parser.parse input, (errors, window) !->
     if errors?.length
-      errors
+      debug errors
     else
-      output = options.output ? new StringOutput()
       options.converter = new Converter( options )
       options.converter.write-document window.document, output
       callback null, output.final! if callback?
 
-export convert-document = (document, options = {}, callback) !->
+export !function convert-document (document, options = {}, callback)
   apply-options options
 
   output = options.output ? new StringOutput()
