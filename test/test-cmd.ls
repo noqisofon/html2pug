@@ -3,7 +3,7 @@ require! child_process: {exec}
 require! \async
 
 html2pug = (input-file, output-dir, callback) ->
-  command = "node ../cli.js --no-enpty-pipe #{input-file} -o #{output-dir}"
+  command = "node ../cli.js --no-empty-pipe #{input-file} -o #{output-dir}"
   options =
     cwd: __dirname
   child = exec command, options, (err, stdout, stderr) ->

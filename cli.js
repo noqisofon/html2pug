@@ -23,7 +23,7 @@ function parsePath(where) {
 }
 
 function convert(input, output, options) {
-    debug( 'convert ( %j, %j, %j )', input, output, options );
+    debug( 'convert ( %o, %o, %o )', input, output, options );
 
     if ( input ) {
         let errors;
@@ -46,7 +46,7 @@ const commander   = require( 'commander' );
 const packageJson = require( './package.json' );
 
 commander
-    .version( packageJson.version)
+    .version( packageJson.version )
     .option( '-d, --double'       , 'use double quotes for attributes' )
     .option( '-s, --scalate'      , 'generate pug syntax compatible with Scalate' )
     .option( '-t, --tabs'         , 'use tabs instead of spaces' )
@@ -56,7 +56,7 @@ commander
     .option( '--body-less'        , 'do not output enveloping html and body tags' )
     .option( '--numeric'          , 'use numeric character entities' )
     .option( '--no-attr-comma'    , 'omit attribute separating commas' )
-    .option( '--no-enpty-pipe'    , 'omit lines with only pipe (\'|\') printable character' );
+    .option( '--no-empty-pipe'    , 'omit lines with only pipe (\'|\') printable character' );
 
 commander.parse( process.argv );
 
@@ -70,13 +70,16 @@ if ( !args || args.length === 0 ) {
     args = [ '-' ];
 }
 
-debug( 'args: %j', args );
+debug( 'commander: %o', commander );
+debug( 'commander.attr-comma: %o', commander.attrComma );
+debug( 'commander.empty-pipe: %o', commander.emptyPipe );
+debug( 'args     : %o', args );
 
 
 for ( let i in args ) {
     let arg = args[i];
 
-    debug( '%d - %j', i, arg );
+    debug( '%d - %o', i, arg );
     if ( arg === '-' ) {
         input = '';
 
@@ -100,7 +103,7 @@ for ( let i in args ) {
         }
     }
 
-    debug( 'input-url: %j', inputUrl );
+    debug( 'input-url: %o', inputUrl );
 
     if ( inputUrl && inputUrl.protocol ) {
         commander.inputType = 'url';
@@ -108,12 +111,12 @@ for ( let i in args ) {
     } else {
         let inputPath = parsePath( arg );
 
-        debug( 'input-path: %j', inputPath );
+        debug( 'input-path: %o', inputPath );
 
         if ( fs.existsSync( inputPath ) ) {
             inputStats = fs.statSync( inputPath );
 
-            debug( 'input-stats: %j', inputStats );
+            debug( 'input-stats: %o', inputStats );
 
             if ( inputStats.isFile() ) {
                 let outdir     = commander.outdir || path.dirname( arg );
