@@ -1,7 +1,10 @@
-require! <[ fs path ]>
-require! 'jsdom'
-require! he: Ent
-require! debug: meta-debug
+require! {
+  fs
+  path
+  jsdom
+  he: Ent
+  debug: meta-debug
+}
 
 debug = meta-debug \html2pug
 
@@ -65,7 +68,8 @@ class Writer
 
   tag-head: (node) ->
     # debug 'Writer#tag-head( %o )', node
-    result = if node.tag-name isnt \DIV then node.tag-name.to-lower-case! else ''
+    result = | node.tag-name isnt \DIV  => node.tag-name.to-lower-case!
+             | _                        => ''
 
     # debug '  --> result: %o', result
 
@@ -182,7 +186,12 @@ class Writer
 
     return if pipe and @no-empty-pipe and line.trim! .length is 0
 
-    prefix = if pipe then '| ' else ''
+    prefix = | pipe  => '| '
+             | _     => ''
+
+    debug 'node: %o', node
+    debug 'node.previous-sibling: %o', node.previous-sibling
+    debug 'node.next-sibling    : %o', node.next-sibling
 
     line = line.trim-left!  unless node?.previous-sibling?.node-type is 1
     line = line.trim-right! unless node?.next-sibling?.node-type is 1
@@ -226,8 +235,7 @@ class Writer
       else
         line  = word
 
-    if line.length
-      lines.push line
+    lines.push line if line.length
     lines
 
 public-id-doctype-names =
@@ -282,7 +290,7 @@ class Converter
       output.writeln "doctype #{doc-type-name}" if doc-type-name?
 
     if document.document-element
-      @write-child document, output, false
+      @write-children document, output, false
     else
       # document element is missing
       html-elements = document.get-element-by-tag-name \html
@@ -309,11 +317,14 @@ class Converter
         @writer.write-text-content node, output,
           pipe: false
           wrap: false
-      else if tag-name is \script
-        @write-script node, output, tag-head, tag-attr
-      else if tag-name is \style
-        @write-script node, output, tag-head, tag-attr
+      else
+        switch tag-name
+        | \script       =>
+          @write-script node, output, tag-head, tag-attr
+        | \style        =>
+          @write-style  node, output, tag-head, tag-attr
     else if tag-name is \conditional
+      # debug 'node.get-attribute( \condition ): %o', node.get-attribute( \condition )
       output.writeln "//#{node.get-attribute( \condition )}"
       @write-children node, output
     else if [ \pre ].index-of( tag-name ) isnt -1
@@ -329,7 +340,7 @@ class Converter
           if data? and data.length > 0
             if first-line
               # suckup starting linefeed if any
-              data = data.replace( /\r\n|\r|\n/, '' ) if data.search /\r\n|\r|\n/ is 0
+              data = data.replace( /\r\n|\r|\n/, '' ) if data.search( /\r\n|\r|\n/ ) is 0
               data = "\\n#{data}"
               first-line = false
             data = data.replace( /\t/g, '\\t' )
@@ -338,7 +349,7 @@ class Converter
       output.writeln!
       output.leave
     else if @options.body-less and ( tag-name in <[ html head body ]> )
-      @write-child node, output, false
+      @write-children node, output, false
     else if tag-text
       if do-not-encode
         output.writeln "#{tag-head}#{tag-attr} #{tag-text}"
@@ -346,10 +357,10 @@ class Converter
         output.writeln "#{tag-head}#{tag-attr} #{Ent.encode( tag-text, ent-options )}"
     else
       output.writeln "#{tag-head}#{tag-attr}"
-      @write-child node, output
+      @write-children node, output
 
-  write-child: (parent, output, indent = true) !->
-    # debug 'Converter#write-child( %o, %o, %o )', parent, output, indent
+  write-children: (parent, output, indent = true) !->
+    # debug 'Converter#write-children( %o, %o, %o )', parent, output, indent
     output.enter! if indent
 
     @writer.for-each-child parent, (child) ~>
@@ -358,17 +369,20 @@ class Converter
 
       # debug '  node-type: %o', node-type
 
-      if node-type is 1            # element
+      # if node-type is 1
+      switch node-type
+      | 1              =>            # element
         @write-element child, output
-      else if node-type is 3       # text
-        if parent._node-name is \code
+      | 3              =>            # text
+        switch parent._node-name
+        | \code                  =>
           @write-text child, output,
             encode-entity-ref: true
             pipe: true
-        else
+        | otherwise              =>
           @write-text child, output,
             encode-entity-ref: if do-not-encode then false else true
-      else if node-type is 8        # comment
+      | 8              =>            # comment
         @write-comment child, output
     output.leave! if indent
 
@@ -379,11 +393,11 @@ class Converter
 
   write-comment: (node, output) !->
     # debug 'Converter#write-comment( %o, %o )', node, output
-    condition = node.data.match /\s*\[(if\s+[^\]]]+)\]/
+    condition = node.data.match /\s*\[(if\s+[^\]]+)\]/
 
     # debug 'condition: %o', condition
 
-    if not condition
+    unless condition
       data = node.data or ''
       if data.length is 0 or data.search( /\r|\n/ ) is -1
         output.writeln "// #{data.trim!}"
@@ -403,7 +417,8 @@ class Converter
 
   write-conditional: (node, condition, output) !->
     # debug 'Converter#write-conditional( %o, %o, %o )', node, condition, output
-    inner-HTML = node.text-content.trim! .raplace /\s\[if\s+[^\]]+\]>\s*/, '' .replace '<![endif]', ''
+    # debug 'node.text-content: %o', node.text-content
+    inner-HTML = node.text-content.trim! .replace /\s*\[if\s+[^\]]+\]>\s*/, '' .replace '<![endif]', ''
 
     # debug 'inner-HTML: %s', inner-HTML
 
@@ -411,9 +426,12 @@ class Converter
       condition = "[#{condition}] <!"
       inner-HTML = null
 
-    conditional-elem = node.own-document.create-element \conditional
+    # debug 'inner-HTML: %s', inner-HTML
+
+    conditional-elem = node.owner-document.create-element \conditional
     conditional-elem.set-attribute \condition, condition
-    conditional-elem.insert-before conditional-elem, node.next-sibling
+    conditional-elem.inner-HTML = inner-HTML if inner-HTML
+    node.parent-node.insert-before conditional-elem, node.next-sibling
 
   write-script: (node, output, tag-head, tag-attr) !->
     # debug 'Converter#write-script( %o, %o, %o, %o )', node, output, tag-head, tag-attr
