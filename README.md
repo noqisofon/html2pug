@@ -1,13 +1,17 @@
-html2jade-ls
+html2pug-ls
 ================================================================
 
-このリポジトリは [@donpark](https://github.com/donpark)氏の [donpark/html2jade](https://github.com/donpark/html2jade)のソースを LiveScript で書き直したものです。  
-また、いくつかの未実装の部分も実装してあります。
+This repository is a rewrite of the source of [@donpark](https://github.com/donpark)'s [donpark/html2jade](https://github.com/donpark/html2jade) with LiveScript.
+Also, some unimplemented parts are also implemented.
 
 ## Install
 
     npm install https://github.com/noqisofon/html2pug-ls
 
-## 既知のバグ
+## Implemented
 
-`html` 要素や `body` 要素の無い裸の要素が含まれた HTML ファイルを変換する際に、一番始めの要素(コメント等)が `html` 要素の外に出てしまう。
+- Conversion from URL.
+
+## Known bugs
+
+- When converting an HTML file that contains bare elements without `html` elements and `body` elements, the first element (comment etc.) comes out of the `html` element.
